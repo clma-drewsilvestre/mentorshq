@@ -1,0 +1,5 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mentors HQ">
+  <rect width="512" height="512" rx="112" fill="#0B0B0D"/>
+  <rect x="8" y="8" width="496" height="496" rx="104" fill="none" stroke="#B87333" stroke-width="4" stroke-opacity="0.5"/>
+  <path d="M120 360V152H170L256 280L342 152H392V360H348V224L268 342H244L164 224V360H120Z" fill="#D4AF37"/>
+</svg>
