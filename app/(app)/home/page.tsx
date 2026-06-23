@@ -1,32 +1,50 @@
+import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { BrandChip } from "@/components/brand-chip";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { fetchTasks } from "@/lib/tasks-query";
+import { BrandFilter } from "@/components/brand-filter";
+import { TaskCard } from "@/components/task-card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { CirclePlus, Pin, ChevronRight } from "lucide-react";
 import { BRAND_SLUGS, type BrandSlug } from "@/lib/constants";
+import type { Announcement } from "@/lib/types";
 
 export const metadata = { title: "Home" };
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ brand?: string }>;
+}) {
   const profile = await requireProfile();
+  const { brand } = await searchParams;
+  const activeBrand = (BRAND_SLUGS as readonly string[]).includes(brand ?? "")
+    ? (brand as BrandSlug)
+    : undefined;
+
   const supabase = await createClient();
 
-  // The user's brand coverage (drives their brand chips).
-  const { data: coverage } = await supabase
-    .from("user_brand_coverage")
-    .select("level, brands(slug)")
-    .eq("user_id", profile.id);
+  // Pinned announcements visible to me.
+  const { data: pinnedData } = await supabase
+    .from("announcements")
+    .select("*")
+    .eq("pinned", true)
+    .order("created_at", { ascending: false })
+    .limit(3);
+  const pinned = (pinnedData as Announcement[] | null) ?? [];
 
-  const myBrands =
-    (coverage
-      ?.map((c) => (c.brands as unknown as { slug: BrandSlug } | null)?.slug)
-      .filter(Boolean) as BrandSlug[]) ?? [];
+  // My open tasks (optionally brand-filtered).
+  const allMine = (await fetchTasks(activeBrand)).filter(
+    (t) => t.assignee_id === profile.id && t.status !== "done",
+  );
+  const myTasks = allMine.slice(0, 5);
 
   const firstName = profile.full_name?.split(" ")[0] || "there";
 
   return (
     <div className="space-y-6">
-      {/* Greeting */}
       <section>
         <p className="text-sm text-muted-foreground">Welcome back,</p>
         <h1 className="font-display text-4xl leading-tight text-bone">{firstName}</h1>
@@ -40,38 +58,60 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Brand filter (preview — wired in Stage B) */}
       <section className="space-y-2">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">Brands</p>
-        <div className="flex flex-wrap gap-2">
-          {(myBrands.length ? myBrands : (BRAND_SLUGS as readonly BrandSlug[])).map((slug) => (
-            <BrandChip key={slug} slug={slug} />
-          ))}
-        </div>
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">Filter by brand</p>
+        <BrandFilter active={activeBrand} />
       </section>
 
-      {/* Phase-1 stage-A placeholders for the cadence features (Stage B) */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Today&apos;s tasks</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          Brand-tagged tasks will appear here. Coming next in the build.
-        </CardContent>
-      </Card>
+      <Button render={<Link href="/log" />} className="w-full gap-2" size="lg">
+        <CirclePlus className="h-5 w-5" /> Log work
+      </Button>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Pinned announcement</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          The founder&apos;s pinned note will surface here.
-        </CardContent>
-      </Card>
+      {pinned.length > 0 && (
+        <section className="space-y-2">
+          {pinned.map((a) => (
+            <Card key={a.id} className="border-gold/30 bg-gold/5 p-3">
+              <div className="flex items-center gap-2">
+                <Pin className="h-4 w-4 text-gold" />
+                <h2 className="font-display text-lg leading-tight text-bone">{a.title}</h2>
+              </div>
+              {a.body && <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{a.body}</p>}
+            </Card>
+          ))}
+        </section>
+      )}
 
-      <p className="pt-2 text-center text-xs text-muted-foreground">
-        Foundation checkpoint · cadence tools (tasks, “Log work”, huddle, announcements) come next.
-      </p>
+      <section className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Today&apos;s tasks
+          </h2>
+          <Link href="/tasks" className="flex items-center text-xs text-copper">
+            All tasks <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+        {myTasks.length === 0 ? (
+          <Card>
+            <CardContent className="py-6 text-center text-sm text-muted-foreground">
+              {activeBrand ? "No open tasks for this brand." : "No open tasks. Nice and clear."}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {myTasks.map((t) => (
+              <TaskCard key={t.id} task={t} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <Link
+        href="/announcements"
+        className="flex items-center justify-between rounded-lg border border-border p-3 text-sm"
+      >
+        <span>All announcements</span>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      </Link>
     </div>
   );
 }

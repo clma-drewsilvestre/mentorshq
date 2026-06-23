@@ -41,6 +41,56 @@ export const ASSIGNABLE_ROLES: Role[] = [
   "learning_officer",
 ];
 
+// --- Tasks -----------------------------------------------------------------
+export const TASK_STATUSES = ["todo", "in_progress", "submitted", "done", "blocked"] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
+  todo: "To-do",
+  in_progress: "In progress",
+  submitted: "Submitted",
+  done: "Done",
+  blocked: "Blocked",
+};
+
+// Board column order — Blocked floats to the top for the huddle (spec §C).
+export const BOARD_COLUMNS: TaskStatus[] = ["blocked", "todo", "in_progress", "submitted", "done"];
+
+export const TASK_PRIORITIES = ["low", "medium", "high", "urgent"] as const;
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
+export const PRIORITY_LABEL: Record<TaskPriority, string> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  urgent: "Urgent",
+};
+
+export const HANDOFF_STAGES = ["capture", "produce", "publish", "engage", "convert", "report"] as const;
+export type HandoffStage = (typeof HANDOFF_STAGES)[number];
+export const HANDOFF_LABEL: Record<HandoffStage, string> = {
+  capture: "Capture",
+  produce: "Produce",
+  publish: "Publish",
+  engage: "Engage",
+  convert: "Convert",
+  report: "Report",
+};
+
+// --- Reports ("Log work") --------------------------------------------------
+export const REPORT_TYPES = ["daily_update", "output", "weekly_win", "extra_mile"] as const;
+export type ReportType = (typeof REPORT_TYPES)[number];
+export const REPORT_TYPE_LABEL: Record<ReportType, string> = {
+  daily_update: "Daily update",
+  output: "Output / deliverable",
+  weekly_win: "Weekly win",
+  extra_mile: "Extra-mile",
+};
+
+export type MediaKind = "image" | "video" | "document";
+
+// --- Announcements ---------------------------------------------------------
+export type AudienceKind = "all" | "role" | "brand" | "individual";
+
 export const BRAND_SLUGS = ["mentors", "clma", "fnn", "personal"] as const;
 export type BrandSlug = (typeof BRAND_SLUGS)[number];
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Users, type LucideIcon } from "lucide-react";
+import { Home, Users, ListChecks, CirclePlus, Activity, Megaphone, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -19,6 +19,9 @@ type NavItem = { href: string; label: string; icon: LucideIcon; managerOnly?: bo
 
 const NAV: NavItem[] = [
   { href: "/home", label: "Home", icon: Home },
+  { href: "/tasks", label: "Tasks", icon: ListChecks },
+  { href: "/log", label: "Log work", icon: CirclePlus },
+  { href: "/cadence", label: "Cadence", icon: Activity },
   { href: "/admin/people", label: "Team", icon: Users, managerOnly: true },
 ];
 
@@ -52,6 +55,14 @@ export function AppShell({
           <span className="font-display text-xl leading-none text-gold">Mentors HQ</span>
         </Link>
 
+        <div className="flex items-center gap-1">
+        <Link
+          href="/announcements"
+          aria-label="Announcements"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <Megaphone className="h-5 w-5" />
+        </Link>
         <DropdownMenu>
           <DropdownMenuTrigger className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Avatar className="h-9 w-9 border border-copper/40">
@@ -79,6 +90,7 @@ export function AppShell({
             </form>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </header>
 
       {/* Content */}
