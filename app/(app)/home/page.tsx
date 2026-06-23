@@ -63,7 +63,7 @@ export default async function HomePage({
         <BrandFilter active={activeBrand} />
       </section>
 
-      <Button render={<Link href="/log" />} className="w-full gap-2" size="lg">
+      <Button render={<Link href="/log" />} nativeButton={false} className="w-full gap-2" size="lg">
         <CirclePlus className="h-5 w-5" /> Log work
       </Button>
 
