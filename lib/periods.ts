@@ -15,3 +15,13 @@ export function weekStartISO(d = new Date()): string {
   monday.setDate(d.getDate() - day);
   return localDateISO(monday);
 }
+
+/** Current PH semi-monthly slice (1st–15th or 16th–end of month), spec §L. */
+export function currentSemiMonthlyPeriod(d = new Date()): { start: string; end: string } {
+  const day = d.getDate();
+  if (day <= 15) {
+    return { start: localDateISO(new Date(d.getFullYear(), d.getMonth(), 1)), end: localDateISO(new Date(d.getFullYear(), d.getMonth(), 15)) };
+  }
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  return { start: localDateISO(new Date(d.getFullYear(), d.getMonth(), 16)), end: localDateISO(new Date(d.getFullYear(), d.getMonth(), lastDay)) };
+}

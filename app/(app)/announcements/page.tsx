@@ -17,21 +17,21 @@ export default async function AnnouncementsPage() {
   const me = await requireProfile();
   const manager = isManagement(me.role);
   const supabase = await createClient();
-  const brands = await getBrandsMap();
 
-  const { data } = await supabase
-    .from("announcements")
-    .select("*, author:profiles!announcements_author_id_fkey(full_name)")
-    .order("pinned", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(50);
-  const items = (data as Row[] | null) ?? [];
-
-  let team: { id: string; full_name: string; email: string }[] = [];
-  if (manager) {
-    const { data: t } = await supabase.from("profiles").select("id, full_name, email").order("full_name");
-    team = t ?? [];
-  }
+  const [brands, announcementsRes, teamRes] = await Promise.all([
+    getBrandsMap(),
+    supabase
+      .from("announcements")
+      .select("*, author:profiles!announcements_author_id_fkey(full_name)")
+      .order("pinned", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(50),
+    manager
+      ? supabase.from("profiles").select("id, full_name, email").order("full_name")
+      : Promise.resolve({ data: [] }),
+  ]);
+  const items = (announcementsRes.data as Row[] | null) ?? [];
+  const team = teamRes.data ?? [];
 
   function audienceLabel(a: Row) {
     if (a.audience === "all") return "Everyone";

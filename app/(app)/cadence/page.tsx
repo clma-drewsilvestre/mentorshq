@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { HuddleForm, WeeklyForm } from "./checkin-forms";
 import { localDateISO, weekStartISO } from "@/lib/periods";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { isManagement } from "@/lib/constants";
+import { isViewer, isBoard } from "@/lib/constants";
 
 export const metadata = { title: "Cadence" };
 
@@ -15,47 +15,50 @@ type CheckinRow = {
 
 export default async function CadencePage() {
   const me = await requireProfile();
-  const manager = isManagement(me.role);
+  const canViewTeam = isViewer(me.role); // managers + board see the team digest
+  const isOperator = !isBoard(me.role); // board doesn't ship daily work
   const supabase = await createClient();
   const today = localDateISO();
   const weekStart = weekStartISO();
 
-  // My current entries (prefill).
-  const { data: myHuddle } = await supabase
-    .from("cadence_checkins")
-    .select("content")
-    .eq("user_id", me.id)
-    .eq("type", "huddle")
-    .eq("period", today)
-    .maybeSingle();
-
-  const { data: myWeekly } = await supabase
-    .from("cadence_checkins")
-    .select("content")
-    .eq("user_id", me.id)
-    .eq("type", "weekly")
-    .eq("period", weekStart)
-    .maybeSingle();
-
-  // Manager digest.
-  let teamHuddles: CheckinRow[] = [];
-  let teamWeeklies: CheckinRow[] = [];
-  if (manager) {
-    const [{ data: h }, { data: w }] = await Promise.all([
-      supabase
-        .from("cadence_checkins")
-        .select("user_id, content, author:profiles!cadence_checkins_user_id_fkey(full_name)")
-        .eq("type", "huddle")
-        .eq("period", today),
-      supabase
-        .from("cadence_checkins")
-        .select("user_id, content, author:profiles!cadence_checkins_user_id_fkey(full_name)")
-        .eq("type", "weekly")
-        .eq("period", weekStart),
-    ]);
-    teamHuddles = (h as CheckinRow[] | null) ?? [];
-    teamWeeklies = (w as CheckinRow[] | null) ?? [];
-  }
+  const [myHuddleRes, myWeeklyRes, teamHuddlesRes, teamWeekliesRes] = await Promise.all([
+    isOperator
+      ? supabase
+          .from("cadence_checkins")
+          .select("content")
+          .eq("user_id", me.id)
+          .eq("type", "huddle")
+          .eq("period", today)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    isOperator
+      ? supabase
+          .from("cadence_checkins")
+          .select("content")
+          .eq("user_id", me.id)
+          .eq("type", "weekly")
+          .eq("period", weekStart)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    canViewTeam
+      ? supabase
+          .from("cadence_checkins")
+          .select("user_id, content, author:profiles!cadence_checkins_user_id_fkey(full_name)")
+          .eq("type", "huddle")
+          .eq("period", today)
+      : Promise.resolve({ data: [] }),
+    canViewTeam
+      ? supabase
+          .from("cadence_checkins")
+          .select("user_id, content, author:profiles!cadence_checkins_user_id_fkey(full_name)")
+          .eq("type", "weekly")
+          .eq("period", weekStart)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const myHuddle = myHuddleRes.data;
+  const myWeekly = myWeeklyRes.data;
+  const teamHuddles = (teamHuddlesRes.data as CheckinRow[] | null) ?? [];
+  const teamWeeklies = (teamWeekliesRes.data as CheckinRow[] | null) ?? [];
 
   return (
     <div className="space-y-6">
@@ -64,25 +67,29 @@ export default async function CadencePage() {
         <p className="text-sm text-muted-foreground">Our daily and weekly rhythm.</p>
       </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Daily huddle</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <HuddleForm defaults={(myHuddle?.content as Record<string, string>) ?? {}} />
-        </CardContent>
-      </Card>
+      {isOperator && (
+        <>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Daily huddle</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <HuddleForm defaults={(myHuddle?.content as Record<string, string>) ?? {}} />
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Weekly wins &amp; learnings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <WeeklyForm defaults={(myWeekly?.content as Record<string, string>) ?? {}} />
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Weekly wins &amp; learnings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <WeeklyForm defaults={(myWeekly?.content as Record<string, string>) ?? {}} />
+            </CardContent>
+          </Card>
+        </>
+      )}
 
-      {manager && (
+      {canViewTeam && (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Team digest — today

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Users, ListChecks, CirclePlus, Activity, Megaphone, type LucideIcon } from "lucide-react";
+import { Home, Users, ListChecks, CirclePlus, Activity, Megaphone, Wallet, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -13,17 +13,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { Profile } from "@/lib/types";
-import { ROLE_LABEL, isManagement } from "@/lib/constants";
+import { ROLE_LABEL, isManagement, isBoard } from "@/lib/constants";
 
 type NavItem = { href: string; label: string; icon: LucideIcon; managerOnly?: boolean };
 
-const NAV: NavItem[] = [
-  { href: "/home", label: "Home", icon: Home },
-  { href: "/tasks", label: "Tasks", icon: ListChecks },
-  { href: "/log", label: "Log work", icon: CirclePlus },
-  { href: "/cadence", label: "Cadence", icon: Activity },
-  { href: "/admin/people", label: "Team", icon: Users, managerOnly: true },
-];
+function navFor(role: Profile["role"]): NavItem[] {
+  return [
+    { href: "/home", label: "Home", icon: Home },
+    { href: "/tasks", label: "Tasks", icon: ListChecks },
+    { href: "/log", label: isBoard(role) ? "Activity" : "Log work", icon: CirclePlus },
+    { href: "/cadence", label: "Cadence", icon: Activity },
+    { href: "/pay", label: "Pay", icon: Wallet },
+    { href: "/admin/people", label: "Team", icon: Users, managerOnly: true },
+  ];
+}
 
 function initials(name: string, email: string) {
   const base = name?.trim() || email;
@@ -43,7 +46,7 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const manager = isManagement(profile.role);
-  const items = NAV.filter((i) => !i.managerOnly || manager);
+  const items = navFor(profile.role).filter((i) => !i.managerOnly || manager);
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">

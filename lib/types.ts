@@ -7,6 +7,8 @@ import type {
   ReportType,
   MediaKind,
   AudienceKind,
+  AttendanceStatus,
+  PayslipStatus,
 } from "@/lib/constants";
 
 export type UserStatus = "invited" | "active" | "suspended";
@@ -94,4 +96,30 @@ export interface Announcement {
   target_user_id: string | null;
   pinned: boolean;
   created_at: string;
+}
+
+export interface Attendance {
+  id: string;
+  user_id: string;
+  date: string;
+  time_in: string | null;
+  time_out: string | null;
+  status: AttendanceStatus;
+  late_minutes: number;
+  created_at: string;
+}
+
+export interface Payslip {
+  id: string;
+  user_id: string;
+  period_start: string;
+  period_end: string;
+  basic: number;
+  deductions_total: number;
+  net: number;
+  status: PayslipStatus;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  issued_at: string | null;
 }

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { BrandSlug } from "@/lib/constants";
 import type { Brand } from "@/lib/types";
@@ -10,8 +11,12 @@ export interface BrandsMap {
   idBySlug(slug: BrandSlug): string | undefined;
 }
 
-/** Fetch all brands once and return lookup helpers. */
-export async function getBrandsMap(): Promise<BrandsMap> {
+/**
+ * Fetch all brands once and return lookup helpers. Brands rarely change and
+ * are looked up from multiple places per request (page + task/report query
+ * helpers) — cache() dedupes those into a single Supabase round trip.
+ */
+export const getBrandsMap = cache(async (): Promise<BrandsMap> => {
   const supabase = await createClient();
   const { data } = await supabase.from("brands").select("*").order("created_at");
   const list = (data as Brand[] | null) ?? [];
@@ -24,4 +29,4 @@ export async function getBrandsMap(): Promise<BrandsMap> {
     slugById: (id) => (byId[id]?.slug as BrandSlug | undefined),
     idBySlug: (slug) => bySlug[slug]?.id,
   };
-}
+});

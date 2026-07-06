@@ -3,14 +3,15 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchTasks } from "@/lib/tasks-query";
 import { TaskCard } from "@/components/task-card";
 import { NewTaskDialog } from "./new-task-dialog";
-import { BOARD_COLUMNS, TASK_STATUS_LABEL, isManagement } from "@/lib/constants";
+import { BOARD_COLUMNS, TASK_STATUS_LABEL, isManagement, isViewer } from "@/lib/constants";
 import type { TaskWithMeta } from "@/lib/types";
 
 export const metadata = { title: "Tasks" };
 
 export default async function TasksPage() {
   const me = await requireProfile();
-  const manager = isManagement(me.role);
+  const manager = isManagement(me.role); // can create/assign
+  const canViewTeam = isViewer(me.role); // managers + board see everyone's tasks
   const tasks = await fetchTasks();
 
   // Team list for the assign dropdown (managers only).
@@ -34,7 +35,7 @@ export default async function TasksPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-3xl text-bone">{manager ? "Tasks" : "My tasks"}</h1>
+          <h1 className="font-display text-3xl text-bone">{canViewTeam ? "Tasks" : "My tasks"}</h1>
           <p className="text-sm text-muted-foreground">{tasks.length} total</p>
         </div>
         {manager && <NewTaskDialog team={team} />}
@@ -42,7 +43,11 @@ export default async function TasksPage() {
 
       {grouped.length === 0 && (
         <p className="py-10 text-center text-sm text-muted-foreground">
-          {manager ? "No tasks yet. Create the first one." : "No tasks assigned to you yet."}
+          {manager
+            ? "No tasks yet. Create the first one."
+            : canViewTeam
+              ? "No tasks yet."
+              : "No tasks assigned to you yet."}
         </p>
       )}
 
@@ -62,7 +67,7 @@ export default async function TasksPage() {
           </div>
           <div className="space-y-2">
             {group.items.map((task: TaskWithMeta) => (
-              <TaskCard key={task.id} task={task} showAssignee={manager} />
+              <TaskCard key={task.id} task={task} showAssignee={canViewTeam} />
             ))}
           </div>
         </section>

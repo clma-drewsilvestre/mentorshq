@@ -26,20 +26,22 @@ export default async function HomePage({
 
   const supabase = await createClient();
 
-  // Pinned announcements visible to me.
-  const { data: pinnedData } = await supabase
-    .from("announcements")
-    .select("*")
-    .eq("pinned", true)
-    .order("created_at", { ascending: false })
-    .limit(3);
-  const pinned = (pinnedData as Announcement[] | null) ?? [];
+  // Independent queries — run in parallel instead of one after another.
+  const [pinnedRes, allTasks] = await Promise.all([
+    supabase
+      .from("announcements")
+      .select("*")
+      .eq("pinned", true)
+      .order("created_at", { ascending: false })
+      .limit(3),
+    fetchTasks(activeBrand),
+  ]);
+  const pinned = (pinnedRes.data as Announcement[] | null) ?? [];
 
   // My open tasks (optionally brand-filtered).
-  const allMine = (await fetchTasks(activeBrand)).filter(
-    (t) => t.assignee_id === profile.id && t.status !== "done",
-  );
-  const myTasks = allMine.slice(0, 5);
+  const myTasks = allTasks
+    .filter((t) => t.assignee_id === profile.id && t.status !== "done")
+    .slice(0, 5);
 
   const firstName = profile.full_name?.split(" ")[0] || "there";
 

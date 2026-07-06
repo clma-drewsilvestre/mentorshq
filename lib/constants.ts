@@ -6,22 +6,36 @@ export const ROLES = [
   "cafe_ambassador",
   "media_producer",
   "learning_officer",
+  "board_director",
 ] as const;
 export type Role = (typeof ROLES)[number];
 
 export const MANAGEMENT_ROLES: Role[] = ["founder", "ops_manager"];
+export const BOARD_ROLES: Role[] = ["board_director"];
 
 export function isManagement(role: Role): boolean {
   return MANAGEMENT_ROLES.includes(role);
 }
 
-// Fixed job-title strings (spec §2 — use exactly).
+/** Board of Directors — read-only governance view, never management. */
+export function isBoard(role: Role): boolean {
+  return BOARD_ROLES.includes(role);
+}
+
+/** Anyone who can see team-wide (not just own) data: managers + board. */
+export function isViewer(role: Role): boolean {
+  return isManagement(role) || isBoard(role);
+}
+
+// Fixed job-title strings (spec §2 — use exactly). Board is a governance seat,
+// not one of the 5 operating seats, but reuses the same role/invite plumbing.
 export const ROLE_JOB_TITLE: Record<Role, string> = {
   founder: "Founder & Chief Vision Officer",
   ops_manager: "Operations & Growth Manager",
   cafe_ambassador: "Café Brand Ambassador",
   media_producer: "Media & Growth Producer",
   learning_officer: "Learning & Community Officer",
+  board_director: "Board of Directors",
 };
 
 // Short labels for chips/menus.
@@ -31,6 +45,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   cafe_ambassador: "Café Ambassador",
   media_producer: "Media Producer",
   learning_officer: "Learning Officer",
+  board_director: "Board",
 };
 
 // Roles a founder can assign when inviting (everyone except a second founder by default).
@@ -39,6 +54,7 @@ export const ASSIGNABLE_ROLES: Role[] = [
   "cafe_ambassador",
   "media_producer",
   "learning_officer",
+  "board_director",
 ];
 
 // --- Tasks -----------------------------------------------------------------
@@ -104,6 +120,8 @@ export const ROLE_COVERAGE: Record<
   cafe_ambassador: { primary: ["mentors"], support: ["clma", "fnn", "personal"] },
   media_producer: { primary: ["fnn", "personal"], support: ["mentors", "clma"] },
   learning_officer: { primary: ["clma"], support: ["mentors", "fnn"] },
+  // Board has no operating brand — sees all four as read-only context.
+  board_director: { primary: [], support: ["mentors", "clma", "fnn", "personal"] },
 };
 
 export const BRANDS: Record<
@@ -115,3 +133,16 @@ export const BRANDS: Record<
   fnn: { name: "FNN", short: "FNN", kind: "media", colorVar: "--brand-fnn" },
   personal: { name: "Personal", short: "Personal", kind: "personal", colorVar: "--brand-personal" },
 };
+
+// --- Attendance & payroll (Phase 2 slice) -----------------------------------
+export const ATTENDANCE_STATUSES = ["on_time", "late", "absent", "leave"] as const;
+export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number];
+export const ATTENDANCE_STATUS_LABEL: Record<AttendanceStatus, string> = {
+  on_time: "On-time",
+  late: "Late",
+  absent: "Absent",
+  leave: "Leave",
+};
+
+export const PAYSLIP_STATUSES = ["draft", "issued"] as const;
+export type PayslipStatus = (typeof PAYSLIP_STATUSES)[number];

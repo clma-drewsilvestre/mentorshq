@@ -6,7 +6,7 @@ import { KudosButton } from "./kudos-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrandChip } from "@/components/brand-chip";
 import { Badge } from "@/components/ui/badge";
-import { REPORT_TYPE_LABEL, isManagement, type BrandSlug, type ReportType, type MediaKind } from "@/lib/constants";
+import { REPORT_TYPE_LABEL, isManagement, isViewer, isBoard, type BrandSlug, type ReportType, type MediaKind } from "@/lib/constants";
 
 export const metadata = { title: "Log work" };
 
@@ -31,26 +31,32 @@ function timeAgo(iso: string) {
 export default async function LogPage() {
   const me = await requireProfile();
   const manager = isManagement(me.role);
+  const canViewTeam = isViewer(me.role); // managers + board see everyone's activity
+  const canLog = !isBoard(me.role); // board views only, never submits a log
   const supabase = await createClient();
-  const brands = await getBrandsMap();
 
-  // My open tasks for the optional link.
-  const { data: myTasks } = await supabase
-    .from("tasks")
-    .select("id, title")
-    .eq("assignee_id", me.id)
-    .neq("status", "done")
-    .order("created_at", { ascending: false });
-
-  // Feed (RLS-scoped: own for employees, all for managers).
-  const { data } = await supabase
-    .from("reports")
-    .select(
-      "id, type, body, created_at, user_id, report_media(id, file_path, kind), report_brands(brand_id), report_kudos(user_id), author:profiles!reports_user_id_fkey(full_name)",
-    )
-    .order("created_at", { ascending: false })
-    .limit(50);
-  const reports = (data as ReportRow[] | null) ?? [];
+  // Independent queries — run in parallel instead of one after another.
+  const [brands, myTasksRes, reportsRes] = await Promise.all([
+    getBrandsMap(),
+    canLog
+      ? supabase
+          .from("tasks")
+          .select("id, title")
+          .eq("assignee_id", me.id)
+          .neq("status", "done")
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+    // Feed (RLS-scoped: own for employees, all for managers + board).
+    supabase
+      .from("reports")
+      .select(
+        "id, type, body, created_at, user_id, report_media(id, file_path, kind), report_brands(brand_id), report_kudos(user_id), author:profiles!reports_user_id_fkey(full_name)",
+      )
+      .order("created_at", { ascending: false })
+      .limit(50),
+  ]);
+  const myTasks = myTasksRes.data;
+  const reports = (reportsRes.data as ReportRow[] | null) ?? [];
 
   // Sign all media paths in one batch.
   const allPaths = reports.flatMap((r) => (r.report_media ?? []).map((m) => m.file_path));
@@ -71,18 +77,20 @@ export default async function LogPage() {
         <p className="text-sm text-muted-foreground">Capture output, wins, and extra-mile effort.</p>
       </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">New log</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <LogWorkForm tasks={myTasks ?? []} />
-        </CardContent>
-      </Card>
+      {canLog && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">New log</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LogWorkForm tasks={myTasks ?? []} />
+          </CardContent>
+        </Card>
+      )}
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          {manager ? "Team activity" : "My activity"}
+          {canViewTeam ? "Team activity" : "My activity"}
         </h2>
         {reports.length === 0 && (
           <p className="py-6 text-center text-sm text-muted-foreground">Nothing logged yet.</p>
@@ -100,7 +108,7 @@ export default async function LogPage() {
                   <Badge variant="outline" className="border-copper/50 text-[10px] text-copper">
                     {REPORT_TYPE_LABEL[r.type]}
                   </Badge>
-                  {manager && (
+                  {canViewTeam && (
                     <span className="text-xs text-muted-foreground">{r.author?.full_name}</span>
                   )}
                 </div>
